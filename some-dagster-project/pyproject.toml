@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "some-dagster-project"
+version = "0.1.0"
+description = ""
+authors = ["Vinnie <vdalpiccol@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+dagster-utils = {path = "../dagster-utils", develop = true}
+
+[tool.poetry.group.dev.dependencies]
+dagit = "^1.0.14"
+pytest = "^7.1.2"
+pytest-cov = "^3.0.0"
+black = "^22.6.0"
+isort = "^5.10.1"
+moto = "^4.0.11"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.dagster]
+module_name = "some_dagster_project"

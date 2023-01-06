@@ -1,0 +1,10 @@
+ops:
+  my_gsheets_asset:
+    config:
+      sheet_mapping:
+        my_cool_sheet: sheet_id
+        my_cooler_sheet: different_sheet_id
+resources:
+  utils_gsheets:
+    config:
+      auth: {}

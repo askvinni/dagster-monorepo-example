@@ -1,0 +1,127 @@
+---
+version: "3.9"
+
+x-app-vars:
+  &default-app-vars
+  DAGSTER_POSTGRES_HOSTNAME: "postgresql"
+  DAGSTER_POSTGRES_DB: "postgres_db"
+  DAGSTER_POSTGRES_USER: "postgres_user"
+  DAGSTER_POSTGRES_PASSWORD: "postgres_password"
+  AWS_DEFAULT_REGION: eu-central-1
+  AWS_DEFAULT_PROFILE: my_profile
+  DAGSTER_DEPLOYMENT: dev
+
+services:
+# ###############################
+# DAGSTER
+# ###############################
+  dagster:
+    build:
+      context: _deployment
+      dockerfile: Dockerfile
+    container_name: dagster-daemon
+    restart: on-failure
+    command: dagster-daemon run
+    environment:
+      << : *default-app-vars
+    depends_on:
+      - postgresql
+    volumes:
+      - ./_localstack/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/io_manager_storage:/tmp/io_manager_storage
+    networks:
+      - dagster_network
+
+  dagit:
+    build:
+      context: _deployment
+      dockerfile: Dockerfile
+    container_name: dagit
+    restart: on-failure
+    command: dagit -h 0.0.0.0 -p 3000
+    ports:
+      - 3000:3000
+    environment:
+      << : *default-app-vars
+    depends_on:
+      - postgresql
+    volumes:
+      - ./_localstack/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/io_manager_storage:/tmp/io_manager_storage
+    networks:
+      - dagster_network
+
+# ###############################
+# STORAGE
+# ###############################
+  postgresql:
+    image: postgres:11
+    container_name: postgresql
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: "postgres_db"
+      POSTGRES_USER: "postgres_user"
+      POSTGRES_PASSWORD: "postgres_password"
+    volumes:
+      - ./postgres-dagster:/var/lib/postgresql/data
+    networks:
+      - dagster_network
+
+  localstack:
+    image: localstack/localstack
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      HOSTNAME: localhost
+      DEFAULT_REGION: eu-central-1
+    volumes:
+      - ./_localstack/local_stack.sh:/docker-entrypoint-initaws.d/create_localstack_infra.sh
+    networks:
+      - dagster_network
+    secrets:
+      - snowflake_user
+      - snowflake_password
+
+# ###############################
+# USER CODE LOCATIONS
+# ###############################
+  some-dagster-project:
+    build:
+      context: .
+      dockerfile: some-dagster-project/Dockerfile
+    container_name: some-dagster-project.repo.dagster
+    command: ['/bin/sh', '/localstack/ucr-entrypoint.sh', 'some_dagster_project']
+    restart: always
+    environment:
+      << : *default-app-vars
+    depends_on:
+      localstack:
+        condition: service_healthy
+    volumes:
+      - ./_localstack/ucr-entrypoint.sh:/localstack/ucr-entrypoint.sh
+      - $HOME/.aws:/root/.aws:ro
+      - ./dagster-utils/dagster_utils:/app/venv/lib/python3.9/site-packages/dagster_utils
+      - ./some-dagster-project:/opt/dagster/dagster_home/
+    networks:
+      - dagster_network
+    secrets:
+      - snowflake_user
+      - snowflake_password
+
+networks:
+  dagster_network:
+    driver: bridge
+    name: dagster_network
+
+volumes:
+  postgresql:
+
+secrets:
+  snowflake_user:
+    external: true
+  snowflake_password:
+    external: true

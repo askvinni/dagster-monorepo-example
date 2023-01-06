@@ -1,0 +1,5 @@
+load_from:
+  - grpc_server:
+      location_name: some_dagster_project
+      host: some-dagster-project.repo.dagster
+      port: 4266

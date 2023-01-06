@@ -1,0 +1,4 @@
+ops:
+  my_cool_asset:
+    config:
+      return_value: "Hello, Dagster"
